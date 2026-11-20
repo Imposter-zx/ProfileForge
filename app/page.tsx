@@ -24,7 +24,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useStore } from "@/lib/store";
 import { STARTER_TEMPLATES } from "@/lib/readme/templates";
-import type { AnalyzedProfile } from "@/lib/github/analyzer";
+import { analyzeGitHubProfile } from "@/lib/github/analyzer";
 import dynamic from "next/dynamic";
 
 // Dynamic import for Ascii component to ensure client-only rendering
@@ -58,15 +58,9 @@ export default function HomePage() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/github/analyze?username=${encodeURIComponent(target)}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || `GitHub scan error (${res.status})`);
-      }
-
+      const data = await analyzeGitHubProfile(target);
       setStoreUsername(target);
-      setAnalyzedProfile(data as AnalyzedProfile);
+      setAnalyzedProfile(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze profile.");
     } finally {

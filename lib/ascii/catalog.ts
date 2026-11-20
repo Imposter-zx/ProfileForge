@@ -216,16 +216,9 @@ export function buildPieceReadmeUrls(slug: string): {
   lightUrl: string;
   darkUrl: string;
 } {
-  const piece = getPieceBySlug(slug);
-  if (piece?.hasHostedReadmeSvg) {
-    return {
-      lightUrl: `https://ascii.rest/svg/${slug}.svg`,
-      darkUrl: `https://ascii.rest/svg/${slug}.dark.svg`,
-    };
-  }
   return {
-    lightUrl: `/api/ascii/svg/${slug}?dark=0`,
-    darkUrl: `/api/ascii/svg/${slug}?dark=1`,
+    lightUrl: `https://ascii.rest/svg/${slug}.svg`,
+    darkUrl: `https://ascii.rest/svg/${slug}.dark.svg`,
   };
 }
 

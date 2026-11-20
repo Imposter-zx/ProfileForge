@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
+const isGithubPages = process.env.GITHUB_PAGES === "true";
+
 const nextConfig: NextConfig = {
+  output: isGithubPages ? "export" : undefined,
+  basePath: isGithubPages ? "/ProfileForge" : "",
   images: {
+    unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
       { protocol: "https", hostname: "github-readme-stats.vercel.app" },
