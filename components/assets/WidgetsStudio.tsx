@@ -257,6 +257,12 @@ export function WidgetsStudio() {
             </label>
           </div>
         )}
+
+        {widgetType === "trophies" && (
+          <div className="col-span-full p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300">
+            <strong>⚠️ Upstream Notice:</strong> The public domain <code className="text-amber-200">github-profile-trophy.vercel.app</code> is currently suspended by Vercel (HTTP 402 Payment Required - free bandwidth exceeded). To display trophies without errors, fork <a href="https://github.com/ryo-ma/github-profile-trophy" target="_blank" rel="noopener noreferrer" className="underline text-amber-200">ryo-ma/github-profile-trophy</a> to your own free Vercel account.
+          </div>
+        )}
       </div>
 
       {/* Action Footer */}

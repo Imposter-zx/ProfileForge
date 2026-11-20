@@ -139,7 +139,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
           id: "trophies-1",
           type: "trophies",
           title: "GitHub Trophies",
-          enabled: true,
+          enabled: false,
           align: "center",
           data: {
             widget: {
@@ -512,7 +512,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
           id: "trophies-1",
           type: "trophies",
           title: "GitHub Trophies",
-          enabled: true,
+          enabled: false,
           align: "center",
           data: {
             widget: {

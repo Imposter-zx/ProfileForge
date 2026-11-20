@@ -742,6 +742,21 @@ function GitHubWidgetEditor({
           </label>
         </div>
       </div>
+
+      {widget.type === "trophies" && (
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 space-y-2">
+          <p className="font-semibold">⚠️ Upstream Service Notice</p>
+          <p className="text-slate-400 leading-relaxed">
+            The public domain <code className="text-amber-200">github-profile-trophy.vercel.app</code> is temporarily throttled by Vercel (HTTP 402 Payment Required - free bandwidth exceeded). If you deploy your own fork on Vercel, enter its URL below:
+          </p>
+          <Input
+            label="Personal Deployment URL (optional)"
+            placeholder="https://your-trophy-fork.vercel.app/"
+            value={String(widget.customBaseUrl || "")}
+            onChange={(e) => updateWidget({ customBaseUrl: e.target.value })}
+          />
+        </div>
+      )}
     </div>
   );
 }
