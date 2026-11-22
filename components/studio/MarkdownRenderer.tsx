@@ -51,8 +51,8 @@ export function MarkdownRenderer({ markdown }: { markdown: string }) {
     // Markdown Images: ![alt](url)
     html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="inline-block max-w-full my-1 rounded" />');
 
-    // Unordered lists (- item)
-    html = html.replace(/^\- (.*$)/gim, '<li class="ml-4 list-disc text-sm text-slate-300 leading-relaxed">$1</li>');
+    // Unordered lists (- item or * item)
+    html = html.replace(/^[\-\*] (.*$)/gim, '<li class="ml-4 list-disc text-sm text-slate-300 leading-relaxed">$1</li>');
 
     // Wrap consecutive list items in <ul>
     html = html.replace(/(<li[\s\S]*?<\/li>(\s*<li[\s\S]*?<\/li>)*)/g, '<ul class="my-2 space-y-1">$1</ul>');

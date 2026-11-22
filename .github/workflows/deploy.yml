@@ -41,12 +41,24 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run Automated Unit & Integration Tests
+        run: npm test
+
+      - name: Prepare static export for GitHub Pages
+        run: |
+          if [ -d "app/api" ]; then mv app/api app_api_backup; fi
+
       - name: Build & Export Static Site
         run: npm run build
         env:
           GITHUB_PAGES: "true"
           NEXT_TELEMETRY_DISABLED: 1
           NODE_ENV: production
+
+      - name: Restore API routes
+        if: always()
+        run: |
+          if [ -d "app_api_backup" ]; then mv app_api_backup app/api; fi
 
       - name: Ensure .nojekyll Exists in Export Output
         run: touch ./out/.nojekyll

@@ -14,12 +14,16 @@ import {
   X,
   Palette,
 } from "lucide-react";
+import Image from "next/image";
+import { GitHubIcon } from "../ui/GitHubIcon";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
+import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, isConnected } = useGitHubAuth();
 
   const navLinks = [
     { href: "/", label: "Analyzer", icon: <Terminal className="w-4 h-4" /> },
@@ -107,7 +111,38 @@ export function Navbar() {
         </nav>
 
         {/* Right CTA */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {isConnected && user ? (
+            <Link
+              href="/studio"
+              className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors"
+              title={`Connected as @${user.login}`}
+            >
+              {user.avatar_url && (
+                <Image
+                  src={user.avatar_url}
+                  alt={user.login}
+                  width={22}
+                  height={22}
+                  className="rounded-full"
+                  unoptimized
+                />
+              )}
+              <span className="text-xs font-mono text-indigo-300 hidden sm:inline">
+                @{user.login}
+              </span>
+            </Link>
+          ) : (
+            <a
+              href="/api/auth/github/login"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-xs text-slate-300 hover:text-white transition-colors"
+              title="Connect GitHub account"
+            >
+              <GitHubIcon className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Connect</span>
+            </a>
+          )}
+
           <Link href="/studio">
             <Button
               size="sm"

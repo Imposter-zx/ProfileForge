@@ -17,7 +17,9 @@ import { SectionPanel } from "./SectionPanel";
 import { SectionEditor } from "./SectionEditor";
 import { PreviewPanel } from "./PreviewPanel";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { PublishModal } from "@/components/github/PublishModal";
+import { useGitHubAuth } from "@/hooks/useGitHubAuth";
+import Image from "next/image";
 import {
   compileReadmeMarkdown,
 } from "@/lib/readme/compiler";
@@ -36,6 +38,8 @@ export function StudioLayout() {
     historyPast,
     historyFuture,
   } = useStore();
+
+  const { user, isConnected } = useGitHubAuth();
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
@@ -159,6 +163,28 @@ export function StudioLayout() {
 
         {/* Right: Export & Publish Actions */}
         <div className="flex items-center gap-2">
+          {isConnected && user ? (
+            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+              {user.avatar_url && (
+                <Image
+                  src={user.avatar_url}
+                  alt={user.login}
+                  width={20}
+                  height={20}
+                  className="rounded-full"
+                  unoptimized
+                />
+              )}
+              <span className="font-mono text-[11px] text-indigo-300">@{user.login}</span>
+            </div>
+          ) : (
+            <a href="/api/auth/github/login" className="hidden lg:block">
+              <Button variant="outline" size="sm" leftIcon={<GitPullRequest className="w-3.5 h-3.5" />}>
+                Connect GitHub
+              </Button>
+            </a>
+          )}
+
           <Button
             onClick={handleExportZip}
             variant="outline"
@@ -217,54 +243,10 @@ export function StudioLayout() {
       </div>
 
       {/* PUBLISH TO GITHUB MODAL */}
-      <Modal
+      <PublishModal
         isOpen={isPublishModalOpen}
         onClose={() => setIsPublishModalOpen(false)}
-        title="Publish Directly to GitHub"
-        subtitle="Safe, incremental OAuth workflow with side-by-side PR preview"
-        maxWidth="lg"
-      >
-        <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-            <h4 className="font-semibold text-slate-100 flex items-center gap-2">
-              <GitPullRequest className="w-4 h-4 text-indigo-400" />
-              Target Profile Repository:
-            </h4>
-            <p className="font-mono text-indigo-300">
-              github.com/{username || "{username}"}/{username || "{username}"}
-            </p>
-            <p className="text-slate-400 text-[11px]">
-              GitHub displays the README.md in this special repository directly on your
-              public profile page.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h5 className="font-semibold text-slate-200">Our Safe Workflow:</h5>
-            <ol className="list-decimal pl-5 space-y-1.5 text-slate-400">
-              <li>Verifies repository existence or prompts automatic creation.</li>
-              <li>Generates any dynamic ASCII SVGs and stores them safely in <code className="text-indigo-300">.github/assets/</code>.</li>
-              <li>Opens a Pull Request on branch <code className="text-indigo-300">profile-forge/patch-update</code> so your current main branch is never overwritten unconfirmed.</li>
-            </ol>
-          </div>
-
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <span className="text-[11px] text-slate-500">
-              Tokens remain securely encrypted server-side.
-            </span>
-            <Button
-              onClick={() => {
-                alert("GitHub OAuth app credentials (GITHUB_OAUTH_CLIENT_ID) can be configured in .env for direct automated publishing. You can also export the ZIP or copy the Markdown now!");
-                setIsPublishModalOpen(false);
-              }}
-              variant="primary"
-              size="sm"
-            >
-              Connect GitHub OAuth
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      />
     </div>
   );
 }

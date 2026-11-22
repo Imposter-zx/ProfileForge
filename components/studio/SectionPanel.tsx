@@ -226,6 +226,20 @@ const AVAILABLE_SECTIONS: AddSectionOption[] = [
     },
   },
   {
+    type: "coding-activity",
+    title: "Contribution Activity Graph",
+    category: "GitHub Metrics",
+    description: "Animated contribution heat-map / activity graph across the last year",
+    defaultData: {
+      widget: {
+        type: "activity-graph",
+        username: "octocat",
+        theme: "tokyo-night",
+        hideBorder: true,
+      },
+    },
+  },
+  {
     type: "contact",
     title: "Contact & Reach Out",
     category: "Links",

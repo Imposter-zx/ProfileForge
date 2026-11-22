@@ -217,7 +217,8 @@ export function SectionEditor() {
           section.type === "top-languages" ||
           section.type === "streak" ||
           section.type === "trophies" ||
-          section.type === "contribution-graph") && (
+          section.type === "contribution-graph" ||
+          section.type === "coding-activity") && (
           <GitHubWidgetEditor sectionId={section.id} data={d} />
         )}
 

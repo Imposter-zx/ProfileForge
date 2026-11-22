@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useStore } from "@/lib/store";
 import { STARTER_TEMPLATES } from "@/lib/readme/templates";
 import { analyzeGitHubProfile } from "@/lib/github/analyzer";
+import { GitHubConnectCard } from "@/components/github/GitHubConnectCard";
 import dynamic from "next/dynamic";
 
 // Dynamic import for Ascii component to ensure client-only rendering
@@ -174,6 +175,11 @@ export default function HomePage() {
                     </div>
                   </div>
                 )}
+
+                {/* GitHub Connect & Repo Detector Card */}
+                <div className="mt-8 text-left">
+                  <GitHubConnectCard />
+                </div>
               </div>
             </div>
 
