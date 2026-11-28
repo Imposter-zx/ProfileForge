@@ -1,7 +1,7 @@
 // app/assets/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Sparkles,
   Film,
@@ -22,6 +22,22 @@ type AssetTab = "capsule" | "gifs" | "tech" | "widgets" | "badges" | "custom-ima
 
 export default function AssetsPage() {
   const [activeTab, setActiveTab] = useState<AssetTab>("capsule");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab") as AssetTab | null;
+    const validTabs: AssetTab[] = [
+      "capsule",
+      "gifs",
+      "tech",
+      "widgets",
+      "badges",
+      "custom-image",
+    ];
+    if (tab && validTabs.includes(tab)) {
+      queueMicrotask(() => setActiveTab(tab));
+    }
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#090a0f] text-slate-100">

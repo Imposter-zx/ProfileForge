@@ -57,6 +57,7 @@ export interface StoreState {
   // --- Studio UI ---
   previewMode: "split" | "editor" | "preview";
   activePreviewTab: "preview" | "raw";
+  hasDismissedOnboarding: boolean;
 
   // --- ASCII Gallery & Favorites ---
   favoriteSlugs: string[];
@@ -76,6 +77,8 @@ export interface StoreState {
   setSelectedSectionId: (id: string | null) => void;
   setPreviewMode: (mode: "split" | "editor" | "preview") => void;
   setActivePreviewTab: (tab: "preview" | "raw") => void;
+  dismissOnboarding: () => void;
+  resetOnboarding: () => void;
   markSaved: () => void;
 
   // Section manipulation with history snapshot
@@ -306,6 +309,7 @@ export const useStore = create<StoreState>()(
       // Studio UI
       previewMode: "split",
       activePreviewTab: "preview",
+      hasDismissedOnboarding: false,
 
       // ASCII
       favoriteSlugs: ["donut", "matrix-rain", "tokyo-rain", "terminal", "arch-linux"],
@@ -327,6 +331,8 @@ export const useStore = create<StoreState>()(
       setSelectedSectionId: (selectedSectionId) => set({ selectedSectionId }),
       setPreviewMode: (previewMode) => set({ previewMode }),
       setActivePreviewTab: (activePreviewTab) => set({ activePreviewTab }),
+      dismissOnboarding: () => set({ hasDismissedOnboarding: true }),
+      resetOnboarding: () => set({ hasDismissedOnboarding: false }),
       markSaved: () => set({ lastSavedAt: new Date().toISOString() }),
 
       addSection: (section) => {
@@ -698,6 +704,7 @@ export const useStore = create<StoreState>()(
         collapsedSectionIds: state.collapsedSectionIds,
         favoriteSlugs: state.favoriteSlugs,
         previewMode: state.previewMode,
+        hasDismissedOnboarding: state.hasDismissedOnboarding,
         savedTemplates: state.savedTemplates,
         templateBackup: state.templateBackup,
         lastSavedAt: state.lastSavedAt,

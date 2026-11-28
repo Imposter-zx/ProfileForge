@@ -19,11 +19,16 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RotateCcw,
+  HelpCircle,
+  Layers,
+  Sliders,
+  Eye,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { SectionPanel } from "./SectionPanel";
 import { SectionEditor } from "./SectionEditor";
 import { PreviewPanel } from "./PreviewPanel";
+import { StudioOnboarding } from "./StudioOnboarding";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PublishModal } from "@/components/github/PublishModal";
@@ -49,6 +54,8 @@ export function StudioLayout() {
     importMarkdown,
     importProject,
     resetWorkspace,
+    hasDismissedOnboarding,
+    resetOnboarding,
   } = useStore();
 
   const { user, isConnected } = useGitHubAuth();
@@ -61,6 +68,7 @@ export function StudioLayout() {
   const [zipSuccess, setZipSuccess] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
+  const [mobilePane, setMobilePane] = useState<"sections" | "editor" | "preview">("editor");
   const [toastMessage, setToastMessage] = useState<{
     text: string;
     canUndo?: boolean;
@@ -391,13 +399,72 @@ export function StudioLayout() {
           >
             Publish
           </Button>
+
+          {hasDismissedOnboarding && (
+            <button
+              type="button"
+              onClick={resetOnboarding}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
+              title="Show Studio Quick-Start Guide"
+              aria-label="Show Studio Quick-Start Guide"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </header>
+
+      {/* FIRST-TIME ONBOARDING GUIDE */}
+      <StudioOnboarding />
+
+      {/* MOBILE PANE SWITCHER (< md) */}
+      <div className="md:hidden flex items-center gap-1 px-3 py-2 border-b border-slate-800 bg-[#0b0d15] shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobilePane("sections")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            mobilePane === "sections"
+              ? "bg-indigo-600 text-white"
+              : "bg-slate-900 text-slate-400 hover:text-white"
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Sections ({sections.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobilePane("editor")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            mobilePane === "editor"
+              ? "bg-indigo-600 text-white"
+              : "bg-slate-900 text-slate-400 hover:text-white"
+          }`}
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          <span>Editor</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobilePane("preview")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            mobilePane === "preview"
+              ? "bg-indigo-600 text-white"
+              : "bg-slate-900 text-slate-400 hover:text-white"
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>Preview</span>
+        </button>
+      </div>
 
       {/* 3-PANEL STUDIO BODY */}
       <div className="flex-1 flex overflow-hidden">
         {previewMode !== "preview" && showLeftPanel && (
-          <aside className="w-72 shrink-0 h-full hidden md:block">
+          <aside
+            className={`w-full md:w-72 shrink-0 h-full ${
+              mobilePane === "sections" ? "block" : "hidden md:block"
+            }`}
+          >
             <SectionPanel
               onSectionDeleted={(title) =>
                 showToast(`Removed "${title}"`, true)
@@ -407,7 +474,11 @@ export function StudioLayout() {
         )}
 
         {previewMode !== "preview" && (
-          <main className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
+          <main
+            className={`flex-1 h-full overflow-hidden flex-col min-w-0 ${
+              mobilePane === "editor" ? "flex" : "hidden md:flex"
+            }`}
+          >
             <SectionEditor />
           </main>
         )}
@@ -418,8 +489,8 @@ export function StudioLayout() {
               className={`h-full overflow-hidden ${
                 previewMode === "preview"
                   ? "flex-1"
-                  : "w-[440px] lg:w-[480px] xl:w-[540px] shrink-0"
-              }`}
+                  : "w-full md:w-[440px] lg:w-[480px] xl:w-[540px] shrink-0"
+              } ${mobilePane === "preview" ? "block" : "hidden md:block"}`}
             >
               <PreviewPanel />
             </section>

@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   DndContext,
   closestCenter,
@@ -24,6 +25,9 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   X,
+  Sparkles,
+  Palette,
+  ExternalLink,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { SectionCard } from "./SectionCard";
@@ -275,6 +279,35 @@ export function SectionPanel({ onSectionDeleted }: SectionPanelProps) {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
+          {/* Quick Links to Dedicated Explorers */}
+          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
+              Visual Explorers &amp; Studios
+            </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Link
+                href="/ascii"
+                className="flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] font-medium text-indigo-300 transition-colors"
+              >
+                <span className="inline-flex items-center gap-1 truncate">
+                  <Sparkles className="w-3 h-3 shrink-0" />
+                  ASCII Art
+                </span>
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
+              </Link>
+              <Link
+                href="/assets"
+                className="flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] font-medium text-purple-300 transition-colors"
+              >
+                <span className="inline-flex items-center gap-1 truncate">
+                  <Palette className="w-3 h-3 shrink-0" />
+                  GIFs &amp; Badges
+                </span>
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
+              </Link>
+            </div>
+          </div>
+
           {filteredMeta.map((meta) => (
             <button
               key={meta.type}
