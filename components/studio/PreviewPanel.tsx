@@ -35,6 +35,7 @@ export function PreviewPanel() {
     activePreviewTab,
     setActivePreviewTab,
     importMarkdown,
+    theme,
   } = useStore();
   const [copied, setCopied] = useState(false);
   const [viewport, setViewport] = useState<ViewportMode>("desktop");
@@ -277,19 +278,41 @@ export function PreviewPanel() {
               transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
             }}
           >
-            <div className="rounded-xl border border-[#30363d] bg-[#0d1117] shadow-2xl overflow-hidden">
+            <div
+              className={`rounded-xl border shadow-2xl overflow-hidden ${
+                theme === "light"
+                  ? "border-[#d0d7de] bg-white"
+                  : "border-[#30363d] bg-[#0d1117]"
+              }`}
+            >
               {/* GitHub README file header */}
-              <div className="px-4 py-2.5 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between text-xs text-slate-400 font-mono">
+              <div
+                className={`px-4 py-2.5 border-b flex items-center justify-between text-xs font-mono ${
+                  theme === "light"
+                    ? "border-[#d0d7de] bg-[#f6f8fa] text-slate-600"
+                    : "border-[#30363d] bg-[#161b22] text-slate-400"
+                }`}
+              >
                 <span>
                   {username || "octocat"} /{" "}
-                  <strong className="text-slate-200">README.md</strong>
+                  <strong
+                    className={
+                      theme === "light" ? "text-slate-900" : "text-slate-200"
+                    }
+                  >
+                    README.md
+                  </strong>
                 </span>
-                <span className="text-[10px] text-slate-500">
-                  GitHub Profile Preview
+                <span
+                  className={`text-[10px] ${
+                    theme === "light" ? "text-slate-500" : "text-slate-500"
+                  }`}
+                >
+                  GitHub Profile Preview ({theme === "light" ? "Light" : "Dark"})
                 </span>
               </div>
               <div className="p-5 sm:p-8 min-h-[400px]">
-                <MarkdownRenderer markdown={markdown} />
+                <MarkdownRenderer markdown={markdown} theme={theme} />
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,6 +27,25 @@ export const metadata: Metadata = {
   ],
 };
 
+const THEME_INIT_SCRIPT = `
+(function() {
+  try {
+    var raw = localStorage.getItem('profile-forge-storage');
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      var theme = parsed && parsed.state && parsed.state.theme;
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+        return;
+      }
+    }
+  } catch (e) {}
+  document.documentElement.setAttribute('data-theme', 'dark');
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -34,10 +54,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme="dark"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#090a0f] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
-        {children}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] selection:bg-indigo-500/30 selection:text-indigo-200">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

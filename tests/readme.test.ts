@@ -386,4 +386,18 @@ describe("lib/store.ts", () => {
     assert.equal(result, null);
     assert.equal(storageMap.has("profile-forge-storage"), false);
   });
+
+  it("supports theme switching (dark/light) and onboarding dismissal", () => {
+    assert.equal(useStore.getState().theme, "dark");
+    useStore.getState().setTheme("light");
+    assert.equal(useStore.getState().theme, "light");
+    useStore.getState().setTheme("dark");
+    assert.equal(useStore.getState().theme, "dark");
+
+    assert.equal(useStore.getState().hasDismissedOnboarding, false);
+    useStore.getState().dismissOnboarding();
+    assert.equal(useStore.getState().hasDismissedOnboarding, true);
+    useStore.getState().resetOnboarding();
+    assert.equal(useStore.getState().hasDismissedOnboarding, false);
+  });
 });

@@ -32,6 +32,7 @@ import { StudioOnboarding } from "./StudioOnboarding";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PublishModal } from "@/components/github/PublishModal";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 import { compileReadmeMarkdown } from "@/lib/readme/compiler";
 import { exportProjectJson } from "@/lib/readme/importer";
@@ -208,7 +209,7 @@ export function StudioLayout() {
   return (
     <div className="flex flex-col h-screen w-full bg-[#090a0f] text-slate-100 overflow-hidden">
       {/* STUDIO TOP TOOLBAR */}
-      <header className="h-14 border-b border-slate-800/80 bg-[#0c0e17] px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 z-20">
+      <header className="studio-toolbar h-14 border-b border-slate-800/80 bg-[#0c0e17] px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0 z-20">
         {/* Left: Back, Panel Toggle & Title */}
         <div className="flex items-center gap-2 min-w-0">
           <Link
@@ -325,6 +326,8 @@ export function StudioLayout() {
 
         {/* Right: Import, Export & Publish Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <ThemeSwitcher compact />
+
           {isConnected && user ? (
             <div className="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
               {user.avatar_url && (
@@ -499,7 +502,7 @@ export function StudioLayout() {
 
       {/* UNDO / STATUS TOAST */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl text-xs text-slate-100">
+        <div className="studio-toast fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl text-xs text-slate-100">
           <span>{toastMessage.text}</span>
           {toastMessage.canUndo && canUndo && (
             <button

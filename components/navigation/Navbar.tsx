@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { GitHubIcon } from "../ui/GitHubIcon";
 import { Button } from "../ui/Button";
+import { ThemeSwitcher } from "../theme/ThemeSwitcher";
 import { useGitHubAuth } from "@/hooks/useGitHubAuth";
 
 export function Navbar() {
@@ -84,7 +85,7 @@ export function Navbar() {
     pathname.startsWith("/ascii") || pathname.startsWith("/assets");
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#090a0f]/85 backdrop-blur-md">
+    <header className="navbar-header sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#090a0f]/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 group shrink-0">
@@ -187,6 +188,8 @@ export function Navbar() {
 
         {/* Right Contextual Actions */}
         <div className="flex items-center gap-2.5 shrink-0">
+          <ThemeSwitcher />
+
           {isConnected && user ? (
             <Link
               href="/studio"

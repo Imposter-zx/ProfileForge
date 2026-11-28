@@ -222,7 +222,7 @@ export default function HomePage() {
 
                 <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
                   Build a GitHub Profile{" "}
-                  <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  <span className="hero-gradient-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     That Stands Out.
                   </span>
                 </h1>
@@ -268,7 +268,7 @@ export default function HomePage() {
 
               {/* Right Live ASCII Preview Card */}
               <div className="lg:col-span-5">
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/90 p-4 shadow-2xl overflow-hidden">
+                <div className="ascii-terminal rounded-2xl border border-slate-800 bg-slate-950/90 p-4 shadow-2xl overflow-hidden">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs text-slate-400 font-mono">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />

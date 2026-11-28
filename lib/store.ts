@@ -8,7 +8,9 @@ import { STARTER_TEMPLATES } from "./readme/templates";
 import { importMarkdownToSections, importProjectJson } from "./readme/importer";
 
 export const STORAGE_KEY = "profile-forge-storage";
-export const STORAGE_SCHEMA_VERSION = 2;
+export const STORAGE_SCHEMA_VERSION = 3;
+
+export type AppTheme = "dark" | "light";
 
 export interface ProjectSnapshot {
   sections: ReadmeSection[];
@@ -58,6 +60,7 @@ export interface StoreState {
   previewMode: "split" | "editor" | "preview";
   activePreviewTab: "preview" | "raw";
   hasDismissedOnboarding: boolean;
+  theme: AppTheme;
 
   // --- ASCII Gallery & Favorites ---
   favoriteSlugs: string[];
@@ -79,6 +82,7 @@ export interface StoreState {
   setActivePreviewTab: (tab: "preview" | "raw") => void;
   dismissOnboarding: () => void;
   resetOnboarding: () => void;
+  setTheme: (theme: AppTheme) => void;
   markSaved: () => void;
 
   // Section manipulation with history snapshot
@@ -310,6 +314,7 @@ export const useStore = create<StoreState>()(
       previewMode: "split",
       activePreviewTab: "preview",
       hasDismissedOnboarding: false,
+      theme: "dark" as AppTheme,
 
       // ASCII
       favoriteSlugs: ["donut", "matrix-rain", "tokyo-rain", "terminal", "arch-linux"],
@@ -333,6 +338,7 @@ export const useStore = create<StoreState>()(
       setActivePreviewTab: (activePreviewTab) => set({ activePreviewTab }),
       dismissOnboarding: () => set({ hasDismissedOnboarding: true }),
       resetOnboarding: () => set({ hasDismissedOnboarding: false }),
+      setTheme: (theme) => set({ theme }),
       markSaved: () => set({ lastSavedAt: new Date().toISOString() }),
 
       addSection: (section) => {
@@ -693,6 +699,15 @@ export const useStore = create<StoreState>()(
             collapsedSectionIds: Array.isArray(s.collapsedSectionIds) ? s.collapsedSectionIds : [],
             savedTemplates: Array.isArray(s.savedTemplates) ? s.savedTemplates : [],
             templateBackup: s.templateBackup ?? null,
+            hasDismissedOnboarding: s.hasDismissedOnboarding ?? false,
+            theme: s.theme ?? "dark",
+          };
+        }
+        if (version < 3) {
+          return {
+            ...s,
+            hasDismissedOnboarding: s.hasDismissedOnboarding ?? false,
+            theme: s.theme ?? "dark",
           };
         }
         return s;
@@ -708,6 +723,7 @@ export const useStore = create<StoreState>()(
         savedTemplates: state.savedTemplates,
         templateBackup: state.templateBackup,
         lastSavedAt: state.lastSavedAt,
+        theme: state.theme,
       }),
     }
   )

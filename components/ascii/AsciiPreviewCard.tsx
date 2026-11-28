@@ -105,7 +105,7 @@ export function AsciiPreviewCard({
       {/* ASCII Preview Canvas Area */}
       <div
         onClick={() => onInspect(piece)}
-        className="relative flex items-center justify-center p-3 h-44 overflow-hidden bg-slate-950/80 cursor-pointer select-none text-center"
+        className="ascii-terminal relative flex items-center justify-center p-3 h-44 overflow-hidden bg-slate-950/80 cursor-pointer select-none text-center"
       >
         {!isPlaying ? (
           <div className="text-xs text-slate-500 font-mono">Paused</div>
