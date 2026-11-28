@@ -1,14 +1,33 @@
 // lib/store.ts
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type { AnalyzedProfile } from "./github/analyzer";
 import type { ReadmeSection } from "./readme/compiler";
 import type { AsciiCategory } from "./ascii/catalog";
 import { STARTER_TEMPLATES } from "./readme/templates";
+import { importMarkdownToSections, importProjectJson } from "./readme/importer";
+
+export const STORAGE_KEY = "profile-forge-storage";
+export const STORAGE_SCHEMA_VERSION = 2;
 
 export interface ProjectSnapshot {
   sections: ReadmeSection[];
   title: string;
+}
+
+export interface TemplateBackup {
+  sections: ReadmeSection[];
+  projectTitle: string;
+  savedAt: string;
+}
+
+export interface SavedCustomTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  sections: ReadmeSection[];
+  createdAt: string;
 }
 
 export interface StoreState {
@@ -23,10 +42,17 @@ export interface StoreState {
   projectTitle: string;
   sections: ReadmeSection[];
   selectedSectionId: string | null;
+  collapsedSectionIds: string[];
+  lastSavedAt: string | null;
+  storageRecovered: boolean;
 
   // --- History (Undo / Redo) ---
   historyPast: ReadmeSection[][];
   historyFuture: ReadmeSection[][];
+
+  // --- Templates & Backups ---
+  templateBackup: TemplateBackup | null;
+  savedTemplates: SavedCustomTemplate[];
 
   // --- Studio UI ---
   previewMode: "split" | "editor" | "preview";
@@ -50,6 +76,7 @@ export interface StoreState {
   setSelectedSectionId: (id: string | null) => void;
   setPreviewMode: (mode: "split" | "editor" | "preview") => void;
   setActivePreviewTab: (tab: "preview" | "raw") => void;
+  markSaved: () => void;
 
   // Section manipulation with history snapshot
   addSection: (section: ReadmeSection) => void;
@@ -59,9 +86,21 @@ export interface StoreState {
   duplicateSection: (id: string) => void;
   reorderSections: (fromIndex: number, toIndex: number) => void;
   toggleSectionEnabled: (id: string) => void;
+  toggleSectionCollapsed: (id: string) => void;
+  setAllSectionsCollapsed: (collapsed: boolean) => void;
 
-  // Templates
+  // Import / Workspace
+  importMarkdown: (markdown: string) => number;
+  importProject: (jsonString: string) => void;
+  resetWorkspace: () => void;
+
+  // Templates & Custom Templates
   applyTemplate: (templateId: string) => void;
+  restoreTemplateBackup: () => void;
+  saveCustomTemplate: (name: string, description?: string) => SavedCustomTemplate;
+  deleteCustomTemplate: (id: string) => void;
+  duplicateTemplate: (templateId: string) => SavedCustomTemplate | null;
+  applyCustomTemplate: (id: string) => void;
   initDefaultSectionsFromProfile: (profile: AnalyzedProfile) => void;
 
   // History controls
@@ -77,7 +116,7 @@ export interface StoreState {
   setSelectedTagFilter: (tag: string) => void;
 }
 
-const DEFAULT_SECTIONS: ReadmeSection[] = [
+export const DEFAULT_SECTIONS: ReadmeSection[] = [
   {
     id: "sec-banner",
     type: "ascii-banner",
@@ -163,6 +202,81 @@ const DEFAULT_SECTIONS: ReadmeSection[] = [
   },
 ];
 
+function cloneSections(sections: ReadmeSection[]): ReadmeSection[] {
+  return sections.map((s) => ({
+    ...s,
+    data: s.data ? JSON.parse(JSON.stringify(s.data)) : {},
+  }));
+}
+
+function getStorageBackend(): Storage | null {
+  try {
+    if (typeof globalThis !== "undefined" && "localStorage" in globalThis && globalThis.localStorage) {
+      return globalThis.localStorage;
+    }
+  } catch {
+    // Ignore environments where localStorage access throws
+  }
+  return null;
+}
+
+/**
+ * Safe StateStorage wrapper that validates JSON payloads and recovers
+ * gracefully from corrupted localStorage entries.
+ */
+export function createSafeStorage(): StateStorage {
+  const memoryFallback = new Map<string, string>();
+
+  return {
+    getItem: (name: string): string | null => {
+      const backend = getStorageBackend();
+      if (!backend) return memoryFallback.get(name) ?? null;
+
+      try {
+        const raw = backend.getItem(name);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as unknown;
+        if (!parsed || typeof parsed !== "object" || !("state" in parsed)) {
+          throw new Error("Malformed persisted store envelope");
+        }
+        return raw;
+      } catch {
+        // Corrupted payload detected: remove it so the app recovers cleanly
+        try {
+          backend.removeItem(name);
+        } catch {
+          // ignore
+        }
+        return null;
+      }
+    },
+    setItem: (name: string, value: string): void => {
+      const backend = getStorageBackend();
+      if (!backend) {
+        memoryFallback.set(name, value);
+        return;
+      }
+      try {
+        backend.setItem(name, value);
+      } catch {
+        // Ignore quota exceeded or private-mode errors
+      }
+    },
+    removeItem: (name: string): void => {
+      const backend = getStorageBackend();
+      if (!backend) {
+        memoryFallback.delete(name);
+        return;
+      }
+      try {
+        backend.removeItem(name);
+      } catch {
+        // ignore
+      }
+    },
+  };
+}
+
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
@@ -175,12 +289,19 @@ export const useStore = create<StoreState>()(
       // Document
       projectId: "default-project",
       projectTitle: "My Profile README",
-      sections: DEFAULT_SECTIONS,
+      sections: cloneSections(DEFAULT_SECTIONS),
       selectedSectionId: "sec-banner",
+      collapsedSectionIds: [],
+      lastSavedAt: null,
+      storageRecovered: false,
 
       // History
       historyPast: [],
       historyFuture: [],
+
+      // Templates & Backups
+      templateBackup: null,
+      savedTemplates: [],
 
       // Studio UI
       previewMode: "split",
@@ -199,11 +320,14 @@ export const useStore = create<StoreState>()(
       setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
       setAnalyzeError: (analyzeError) => set({ analyzeError }),
 
-      setSections: (sections) => set({ sections }),
-      setProjectTitle: (projectTitle) => set({ projectTitle }),
+      setSections: (sections) =>
+        set({ sections, lastSavedAt: new Date().toISOString() }),
+      setProjectTitle: (projectTitle) =>
+        set({ projectTitle, lastSavedAt: new Date().toISOString() }),
       setSelectedSectionId: (selectedSectionId) => set({ selectedSectionId }),
       setPreviewMode: (previewMode) => set({ previewMode }),
       setActivePreviewTab: (activePreviewTab) => set({ activePreviewTab }),
+      markSaved: () => set({ lastSavedAt: new Date().toISOString() }),
 
       addSection: (section) => {
         const { sections, historyPast } = get();
@@ -212,6 +336,7 @@ export const useStore = create<StoreState>()(
           historyFuture: [],
           sections: [...sections, section],
           selectedSectionId: section.id,
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -221,6 +346,7 @@ export const useStore = create<StoreState>()(
           historyPast: [...historyPast.slice(-20), sections],
           historyFuture: [],
           sections: sections.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -232,11 +358,12 @@ export const useStore = create<StoreState>()(
           sections: sections.map((s) =>
             s.id === id ? { ...s, data: { ...s.data, ...dataUpdates } } : s
           ),
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
       removeSection: (id) => {
-        const { sections, selectedSectionId, historyPast } = get();
+        const { sections, selectedSectionId, collapsedSectionIds, historyPast } = get();
         const next = sections.filter((s) => s.id !== id);
         set({
           historyPast: [...historyPast.slice(-20), sections],
@@ -244,6 +371,8 @@ export const useStore = create<StoreState>()(
           sections: next,
           selectedSectionId:
             selectedSectionId === id ? (next[0]?.id ?? null) : selectedSectionId,
+          collapsedSectionIds: collapsedSectionIds.filter((cid) => cid !== id),
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -256,6 +385,7 @@ export const useStore = create<StoreState>()(
           ...original,
           id: `sec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           title: `${original.title} (Copy)`,
+          data: original.data ? JSON.parse(JSON.stringify(original.data)) : {},
         };
         const next = [...sections];
         next.splice(idx + 1, 0, clone);
@@ -264,6 +394,7 @@ export const useStore = create<StoreState>()(
           historyFuture: [],
           sections: next,
           selectedSectionId: clone.id,
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -273,7 +404,8 @@ export const useStore = create<StoreState>()(
           fromIndex < 0 ||
           fromIndex >= sections.length ||
           toIndex < 0 ||
-          toIndex >= sections.length
+          toIndex >= sections.length ||
+          fromIndex === toIndex
         ) {
           return;
         }
@@ -284,39 +416,200 @@ export const useStore = create<StoreState>()(
           historyPast: [...historyPast.slice(-20), sections],
           historyFuture: [],
           sections: next,
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
       toggleSectionEnabled: (id) => {
-        const { sections } = get();
+        const { sections, historyPast } = get();
         set({
+          historyPast: [...historyPast.slice(-20), sections],
+          historyFuture: [],
           sections: sections.map((s) =>
             s.id === id ? { ...s, enabled: !s.enabled } : s
           ),
+          lastSavedAt: new Date().toISOString(),
+        });
+      },
+
+      toggleSectionCollapsed: (id) => {
+        const { collapsedSectionIds } = get();
+        if (collapsedSectionIds.includes(id)) {
+          set({ collapsedSectionIds: collapsedSectionIds.filter((cid) => cid !== id) });
+        } else {
+          set({ collapsedSectionIds: [...collapsedSectionIds, id] });
+        }
+      },
+
+      setAllSectionsCollapsed: (collapsed) => {
+        const { sections } = get();
+        set({
+          collapsedSectionIds: collapsed ? sections.map((s) => s.id) : [],
+        });
+      },
+
+      importMarkdown: (markdown) => {
+        const parsed = importMarkdownToSections(markdown);
+        if (!parsed.length) return 0;
+        const { sections, historyPast } = get();
+        set({
+          historyPast: [...historyPast.slice(-20), sections],
+          historyFuture: [],
+          sections: parsed,
+          selectedSectionId: parsed[0]?.id ?? null,
+          collapsedSectionIds: [],
+          lastSavedAt: new Date().toISOString(),
+        });
+        return parsed.length;
+      },
+
+      importProject: (jsonString) => {
+        const imported = importProjectJson(jsonString);
+        const { sections, historyPast } = get();
+        set({
+          historyPast: [...historyPast.slice(-20), sections],
+          historyFuture: [],
+          sections: imported.sections,
+          projectTitle: imported.title,
+          username: imported.username || get().username,
+          selectedSectionId: imported.sections[0]?.id ?? null,
+          collapsedSectionIds: [],
+          lastSavedAt: new Date().toISOString(),
+        });
+      },
+
+      resetWorkspace: () => {
+        const { sections, historyPast } = get();
+        const defaults = cloneSections(DEFAULT_SECTIONS);
+        set({
+          historyPast: [...historyPast.slice(-20), sections],
+          historyFuture: [],
+          sections: defaults,
+          projectTitle: "My Profile README",
+          selectedSectionId: defaults[0]?.id ?? null,
+          collapsedSectionIds: [],
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
       applyTemplate: (templateId) => {
-        const { analyzedProfile, username, sections, historyPast } = get();
-        const tmpl = STARTER_TEMPLATES.find((t) => t.id === templateId);
-        if (!tmpl) return;
-        const profile = analyzedProfile || {
-          username: username || "octocat",
-          name: username || "Developer",
+        const { analyzedProfile, username, sections, projectTitle, historyPast, savedTemplates } = get();
+        const starter = STARTER_TEMPLATES.find((t) => t.id === templateId);
+        const custom = !starter ? savedTemplates.find((t) => t.id === templateId) : undefined;
+
+        if (!starter && !custom) return;
+
+        const backup: TemplateBackup = {
+          sections: cloneSections(sections),
+          projectTitle,
+          savedAt: new Date().toISOString(),
         };
-        const newSections = tmpl.createSections(profile);
+
+        let newSections: ReadmeSection[];
+        let newTitle: string;
+
+        if (starter) {
+          const profile = analyzedProfile || {
+            username: username || "octocat",
+            name: username || "Developer",
+          };
+          newSections = starter.createSections(profile);
+          newTitle = `${starter.name} Profile`;
+        } else {
+          newSections = cloneSections(custom!.sections);
+          newTitle = custom!.name;
+        }
+
         set({
+          templateBackup: backup,
           historyPast: [...historyPast.slice(-20), sections],
           historyFuture: [],
           sections: newSections,
           selectedSectionId: newSections[0]?.id ?? null,
-          projectTitle: `${tmpl.name} Profile`,
+          collapsedSectionIds: [],
+          projectTitle: newTitle,
+          lastSavedAt: new Date().toISOString(),
         });
+      },
+
+      restoreTemplateBackup: () => {
+        const { templateBackup, sections, historyPast } = get();
+        if (!templateBackup) return;
+        const restored = cloneSections(templateBackup.sections);
+        set({
+          historyPast: [...historyPast.slice(-20), sections],
+          historyFuture: [],
+          sections: restored,
+          projectTitle: templateBackup.projectTitle,
+          selectedSectionId: restored[0]?.id ?? null,
+          templateBackup: null,
+          lastSavedAt: new Date().toISOString(),
+        });
+      },
+
+      saveCustomTemplate: (name, description = "Custom saved profile template") => {
+        const { sections, savedTemplates } = get();
+        const tmpl: SavedCustomTemplate = {
+          id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: name.trim() || "Custom Template",
+          description: description.trim() || "Custom saved profile template",
+          category: "custom",
+          sections: cloneSections(sections),
+          createdAt: new Date().toISOString(),
+        };
+        set({ savedTemplates: [tmpl, ...savedTemplates] });
+        return tmpl;
+      },
+
+      deleteCustomTemplate: (id) => {
+        const { savedTemplates } = get();
+        set({ savedTemplates: savedTemplates.filter((t) => t.id !== id) });
+      },
+
+      duplicateTemplate: (templateId) => {
+        const { savedTemplates, analyzedProfile, username } = get();
+        const starter = STARTER_TEMPLATES.find((t) => t.id === templateId);
+        const custom = savedTemplates.find((t) => t.id === templateId);
+
+        let baseSections: ReadmeSection[] = [];
+        let baseName = "";
+        let baseDesc = "";
+
+        if (starter) {
+          const profile = analyzedProfile || {
+            username: username || "octocat",
+            name: username || "Developer",
+          };
+          baseSections = starter.createSections(profile);
+          baseName = `${starter.name} (Copy)`;
+          baseDesc = starter.description;
+        } else if (custom) {
+          baseSections = cloneSections(custom.sections);
+          baseName = `${custom.name} (Copy)`;
+          baseDesc = custom.description;
+        } else {
+          return null;
+        }
+
+        const copy: SavedCustomTemplate = {
+          id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: baseName,
+          description: baseDesc,
+          category: "custom",
+          sections: baseSections,
+          createdAt: new Date().toISOString(),
+        };
+        set({ savedTemplates: [copy, ...savedTemplates] });
+        return copy;
+      },
+
+      applyCustomTemplate: (id) => {
+        get().applyTemplate(id);
       },
 
       initDefaultSectionsFromProfile: (profile) => {
         const { sections, historyPast } = get();
-        const tmpl = STARTER_TEMPLATES[0]; // Minimalist Cyberpunk default
+        const tmpl = STARTER_TEMPLATES[0];
         const newSections = tmpl.createSections(profile);
         set({
           historyPast: [...historyPast.slice(-20), sections],
@@ -324,6 +617,7 @@ export const useStore = create<StoreState>()(
           sections: newSections,
           selectedSectionId: newSections[0]?.id ?? null,
           projectTitle: `${profile.name || profile.username}'s Profile`,
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -335,6 +629,7 @@ export const useStore = create<StoreState>()(
           sections: previous,
           historyPast: historyPast.slice(0, -1),
           historyFuture: [sections, ...historyFuture],
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -346,6 +641,7 @@ export const useStore = create<StoreState>()(
           sections: next,
           historyPast: [...historyPast, sections],
           historyFuture: historyFuture.slice(1),
+          lastSavedAt: new Date().toISOString(),
         });
       },
 
@@ -373,13 +669,38 @@ export const useStore = create<StoreState>()(
       setSelectedTagFilter: (selectedTagFilter) => set({ selectedTagFilter }),
     }),
     {
-      name: "profile-forge-storage",
+      name: STORAGE_KEY,
+      version: STORAGE_SCHEMA_VERSION,
+      storage: createJSONStorage(() => createSafeStorage()),
+      migrate: (persistedState: unknown, version: number) => {
+        if (!persistedState || typeof persistedState !== "object") {
+          return {
+            sections: cloneSections(DEFAULT_SECTIONS),
+            storageRecovered: true,
+          } as Partial<StoreState>;
+        }
+        const s = persistedState as Partial<StoreState>;
+        if (version < 2) {
+          return {
+            ...s,
+            sections: Array.isArray(s.sections) && s.sections.length > 0 ? s.sections : cloneSections(DEFAULT_SECTIONS),
+            collapsedSectionIds: Array.isArray(s.collapsedSectionIds) ? s.collapsedSectionIds : [],
+            savedTemplates: Array.isArray(s.savedTemplates) ? s.savedTemplates : [],
+            templateBackup: s.templateBackup ?? null,
+          };
+        }
+        return s;
+      },
       partialize: (state) => ({
         username: state.username,
         projectTitle: state.projectTitle,
         sections: state.sections,
+        collapsedSectionIds: state.collapsedSectionIds,
         favoriteSlugs: state.favoriteSlugs,
         previewMode: state.previewMode,
+        savedTemplates: state.savedTemplates,
+        templateBackup: state.templateBackup,
+        lastSavedAt: state.lastSavedAt,
       }),
     }
   )
