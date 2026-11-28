@@ -52,6 +52,8 @@ const SHADOWS = [
 ] as const;
 
 const EFFECTS = ["glint", "type", "still"] as const;
+const SPEEDS = ["slow", "normal", "fast"] as const;
+const FILLS = ["shade", "block", "light", "hash", "at"] as const;
 
 export function BannerCustomizer() {
   const { addSection } = useStore();
@@ -60,6 +62,9 @@ export function BannerCustomizer() {
   const [font, setFont] = useState<BannerOptions["font"]>("block");
   const [shadow, setShadow] = useState<BannerOptions["shadow"]>("double");
   const [effect, setEffect] = useState<BannerOptions["effect"]>("glint");
+  const [speed, setSpeed] = useState<BannerOptions["speed"]>("normal");
+  const [fill, setFill] = useState<BannerOptions["fill"]>("shade");
+  const [mono, setMono] = useState(false);
   const [color1, setColor1] = useState("00F2FE");
   const [color2, setColor2] = useState("4FACFE");
   const [tagline, setTagline] = useState("Next-Gen GitHub README Studio");
@@ -71,7 +76,9 @@ export function BannerCustomizer() {
     font,
     shadow,
     effect,
-    color: [color1, color2],
+    speed,
+    fill,
+    color: mono ? undefined : [color1, color2],
     tagline: tagline || undefined,
   };
 
@@ -132,7 +139,8 @@ export function BannerCustomizer() {
           font={font}
           shadow={shadow}
           effect={effect}
-          color={[`#${color1}`, `#${color2}`]}
+          mono={mono}
+          color={mono ? undefined : [`#${color1}`, `#${color2}`]}
         />
         {tagline && (
           <p className="text-xs text-slate-400 font-mono mt-3 opacity-80">
@@ -209,27 +217,75 @@ export function BannerCustomizer() {
         </div>
       </div>
 
-      {/* Colors & Tagline */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Colors, Speed, Fill & Tagline */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div>
+          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+            Speed
+          </label>
+          <select
+            value={speed}
+            onChange={(e) => setSpeed(e.target.value as BannerOptions["speed"])}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+          >
+            {SPEEDS.map((sp) => (
+              <option key={sp} value={sp}>
+                {sp}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+            Fill Character
+          </label>
+          <select
+            value={fill}
+            onChange={(e) => setFill(e.target.value as BannerOptions["fill"])}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+          >
+            {FILLS.map((fl) => (
+              <option key={fl} value={fl}>
+                {fl}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <Input
           label="Gradient Start Hex"
           value={color1}
           onChange={(e) => setColor1(e.target.value.replace("#", ""))}
           placeholder="00F2FE"
+          disabled={mono}
         />
         <Input
           label="Gradient End Hex"
           value={color2}
           onChange={(e) => setColor2(e.target.value.replace("#", ""))}
           placeholder="4FACFE"
+          disabled={mono}
         />
-        <Input
-          label="Optional Tagline"
-          value={tagline}
-          onChange={(e) => setTagline(e.target.value)}
-          placeholder="e.g. Building scalable software"
-        />
+        <div className="flex items-end pb-1">
+          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer p-2 rounded-lg bg-slate-950 border border-slate-800 w-full">
+            <input
+              type="checkbox"
+              checked={mono}
+              onChange={(e) => setMono(e.target.checked)}
+              className="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span>Monochrome Mode</span>
+          </label>
+        </div>
       </div>
+
+      <Input
+        label="Optional Tagline"
+        value={tagline}
+        onChange={(e) => setTagline(e.target.value)}
+        placeholder="e.g. Building scalable software"
+      />
 
       {/* Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-800">

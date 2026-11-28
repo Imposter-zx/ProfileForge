@@ -1,9 +1,9 @@
 // components/ascii/AsciiPreviewCard.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Heart, Plus, Maximize2, Play, Pause } from "lucide-react";
+import { Heart, Plus, Maximize2, Play, Pause, Check } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Badge } from "@/components/ui/Badge";
 import type { AsciiPieceEntry } from "@/lib/ascii/catalog";
@@ -11,7 +11,14 @@ import type { PieceName } from "ascii.rest";
 
 const Ascii = dynamic(
   () => import("ascii.rest/react").then((m) => m.Ascii),
-  { ssr: false, loading: () => <div className="text-[10px] text-slate-500 font-mono py-8">Loading piece...</div> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="text-[10px] text-slate-500 font-mono py-8">
+        Loading piece...
+      </div>
+    ),
+  }
 );
 
 export interface AsciiPreviewCardProps {
@@ -28,9 +35,39 @@ export function AsciiPreviewCard({
   const { isFavorite, toggleFavorite } = useStore();
   const favorited = isFavorite(piece.slug);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+  const [added, setAdded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          setIsVisible(entry.isIntersecting);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleUse = () => {
+    onAddToReadme(piece);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  };
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-200 overflow-hidden">
+    <div
+      ref={cardRef}
+      className="group relative flex flex-col justify-between rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-200 overflow-hidden"
+    >
       {/* Top Header */}
       <div className="p-3 border-b border-slate-800/60 flex items-center justify-between gap-2 shrink-0 bg-slate-950/40">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -38,7 +75,11 @@ export function AsciiPreviewCard({
             {piece.name}
           </span>
           {piece.isCanvas && (
-            <Badge variant="cyan" size="sm" className="text-[9px] px-1.5 py-0 font-mono">
+            <Badge
+              variant="cyan"
+              size="sm"
+              className="text-[9px] px-1.5 py-0 font-mono"
+            >
               canvas
             </Badge>
           )}
@@ -66,12 +107,16 @@ export function AsciiPreviewCard({
         onClick={() => onInspect(piece)}
         className="relative flex items-center justify-center p-3 h-44 overflow-hidden bg-slate-950/80 cursor-pointer select-none text-center"
       >
-        {isPlaying ? (
+        {!isPlaying ? (
+          <div className="text-xs text-slate-500 font-mono">Paused</div>
+        ) : isVisible ? (
           <div className="scale-75 sm:scale-90 transition-transform group-hover:scale-95 duration-200">
             <Ascii piece={piece.slug as PieceName} label={piece.name} />
           </div>
         ) : (
-          <div className="text-xs text-slate-500 font-mono">Paused</div>
+          <div className="text-[10px] text-slate-600 font-mono">
+            {piece.name}
+          </div>
         )}
 
         {/* Overlay hover prompt */}
@@ -104,18 +149,31 @@ export function AsciiPreviewCard({
           <button
             onClick={() => onInspect(piece)}
             className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            title="Inspect"
+            title="Inspect & Customize"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
 
           <button
-            onClick={() => onAddToReadme(piece)}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 text-[10px] font-medium transition-colors"
+            onClick={handleUse}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-medium transition-colors ${
+              added
+                ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                : "bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
+            }`}
             title="Add to current README"
           >
-            <Plus className="w-3 h-3" />
-            <span>Use</span>
+            {added ? (
+              <>
+                <Check className="w-3 h-3" />
+                <span>Added</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-3 h-3" />
+                <span>Use</span>
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   Check,
   Plus,
   Search,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
@@ -15,16 +16,18 @@ import {
   TECH_CATALOG,
   TECH_CATEGORIES,
   buildCategorizedTechStackMarkdown,
-  buildTechIconHtml,
   type TechCategory,
+  type TechIconStyle,
 } from "@/lib/assets/tech-icons";
+import { useAssetFavorites } from "@/lib/assets/favorites";
 
 export function TechIconsStudio() {
   const { addSection } = useStore();
+  const { isFavorite, toggleFavorite } = useAssetFavorites();
 
   const [activeCategory, setActiveCategory] = useState<TechCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [iconStyle, setIconStyle] = useState<"badges" | "devicon" | "skillicons">("badges");
+  const [iconStyle, setIconStyle] = useState<TechIconStyle>("badges");
   const [selectedIds, setSelectedIds] = useState<string[]>([
     "ts", "js", "python", "cpp", "go", "rust",
     "react", "nextjs", "vue", "tailwind",
@@ -112,10 +115,10 @@ export function TechIconsStudio() {
         </div>
 
         {/* Style Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs shrink-0">
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs shrink-0 overflow-x-auto max-w-full">
           <button
             onClick={() => setIconStyle("badges")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
               iconStyle === "badges"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
                 : "text-slate-400 hover:text-slate-200"
@@ -125,23 +128,33 @@ export function TechIconsStudio() {
           </button>
           <button
             onClick={() => setIconStyle("devicon")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
               iconStyle === "devicon"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Devicon Color Icons
+            Devicon
+          </button>
+          <button
+            onClick={() => setIconStyle("simpleicons")}
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+              iconStyle === "simpleicons"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Simple Icons
           </button>
           <button
             onClick={() => setIconStyle("skillicons")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
               iconStyle === "skillicons"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            SkillIcons Vector Grid
+            Skill Icons
           </button>
         </div>
       </div>
@@ -264,12 +277,32 @@ export function TechIconsStudio() {
                   <span>{cat.icon}</span>
                   <span>{cat.label}</span>
                 </h4>
-                <div
-                  className="flex flex-wrap gap-2 items-center"
-                  dangerouslySetInnerHTML={{
-                    __html: items.map((t) => buildTechIconHtml(t, iconStyle)).join(" "),
-                  }}
-                />
+                <div className="flex flex-wrap gap-2 items-center">
+                  {items.map((t) => {
+                    const src =
+                      iconStyle === "devicon" && t.deviconSlug
+                        ? `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${t.deviconSlug}.svg`
+                        : iconStyle === "simpleicons"
+                        ? `https://cdn.simpleicons.org/${t.logo}/${t.color}`
+                        : iconStyle === "skillicons" && t.skillIconSlug
+                        ? `https://skillicons.dev/icons?i=${t.skillIconSlug}`
+                        : `https://img.shields.io/badge/${encodeURIComponent(t.name)}-${t.color}?style=for-the-badge&logo=${t.logo}&logoColor=white`;
+                    return (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        key={t.id}
+                        src={src}
+                        alt={t.name}
+                        loading="lazy"
+                        className={
+                          iconStyle === "badges"
+                            ? "h-7 object-contain"
+                            : "h-9 w-auto object-contain"
+                        }
+                      />
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -283,20 +316,48 @@ export function TechIconsStudio() {
 
       {/* Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800">
-        <Button
-          onClick={handleCopyMarkdown}
-          variant="outline"
-          size="sm"
-          leftIcon={
-            copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
-            )
-          }
-        >
-          {copied ? "Markdown Copied!" : "Copy Categorized Markdown"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleCopyMarkdown}
+            disabled={!selectedIds.length}
+            variant="outline"
+            size="sm"
+            leftIcon={
+              copied ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )
+            }
+          >
+            {copied ? "Markdown Copied!" : "Copy Categorized Markdown"}
+          </Button>
+
+          <Button
+            onClick={() =>
+              toggleFavorite({
+                id: `tech-${iconStyle}-${selectedIds.slice().sort().join(",")}`,
+                kind: "tech",
+                title: `Tech Stack (${selectedIds.length} ${iconStyle})`,
+                markdown: generatedMarkdown,
+              })
+            }
+            disabled={!selectedIds.length}
+            variant="ghost"
+            size="sm"
+            leftIcon={
+              <Heart
+                className={`w-3.5 h-3.5 ${
+                  isFavorite(`tech-${iconStyle}-${selectedIds.slice().sort().join(",")}`)
+                    ? "fill-rose-500 text-rose-500"
+                    : ""
+                }`}
+              />
+            }
+          >
+            Save Preset
+          </Button>
+        </div>
 
         <Button
           onClick={handleAddToReadme}

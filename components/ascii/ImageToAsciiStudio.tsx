@@ -8,8 +8,12 @@ import {
   Copy,
   Check,
   Image as ImageIcon,
+  Plus,
+  FileCode2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useStore } from "@/lib/store";
+import { buildSafeMarkdownAsciiBlock } from "@/lib/ascii/custom-editor";
 import {
   convertImageFileToAsciiGrid,
   exportAsciiGridToReadmeSvg,
@@ -17,7 +21,12 @@ import {
   type ImageToAsciiOptions,
 } from "@/lib/ascii/image-to-ascii";
 
-export function ImageToAsciiStudio() {
+export interface ImageToAsciiStudioProps {
+  onOpenInEditor?: (plainText: string) => void;
+}
+
+export function ImageToAsciiStudio({ onOpenInEditor }: ImageToAsciiStudioProps) {
+  const { addSection } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,6 +38,7 @@ export function ImageToAsciiStudio() {
   const [colorMode, setColorMode] = useState<ImageToAsciiOptions["colorMode"]>("color");
   const [invert, setInvert] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+  const [added, setAdded] = useState(false);
 
   const processImage = async (
     file: File,
@@ -87,6 +97,26 @@ export function ImageToAsciiStudio() {
       setCopiedText(true);
       setTimeout(() => setCopiedText(false), 2000);
     } catch {}
+  };
+
+  const handleInsertIntoStudio = () => {
+    if (!gridResult) return;
+    const fenced = buildSafeMarkdownAsciiBlock(gridResult.plainText, {
+      title: selectedFile ? selectedFile.name : "Image ASCII",
+    });
+    if (!fenced) return;
+    addSection({
+      id: `sec-img-ascii-${Date.now()}`,
+      type: "custom",
+      title: selectedFile ? `ASCII: ${selectedFile.name}` : "Image ASCII Art",
+      enabled: true,
+      align: "left",
+      data: {
+        markdown: fenced,
+      },
+    });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2500);
   };
 
   return (
@@ -256,6 +286,32 @@ export function ImageToAsciiStudio() {
               >
                 {copiedText ? "Plain Text Copied!" : "Copy Plain Text"}
               </Button>
+
+              <Button
+                onClick={handleInsertIntoStudio}
+                variant="primary"
+                size="sm"
+                leftIcon={
+                  added ? (
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )
+                }
+              >
+                {added ? "Inserted into Studio!" : "Insert into README Studio"}
+              </Button>
+
+              {onOpenInEditor && (
+                <Button
+                  onClick={() => onOpenInEditor(gridResult.plainText)}
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<FileCode2 className="w-4 h-4" />}
+                >
+                  Open in Custom Editor
+                </Button>
+              )}
             </div>
           )}
         </div>

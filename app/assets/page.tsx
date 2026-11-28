@@ -7,14 +7,18 @@ import {
   Film,
   Code2,
   BarChart2,
+  Award,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/navigation/Navbar";
 import { CapsuleStudio } from "@/components/assets/CapsuleStudio";
 import { GifLibrary } from "@/components/assets/GifLibrary";
 import { TechIconsStudio } from "@/components/assets/TechIconsStudio";
 import { WidgetsStudio } from "@/components/assets/WidgetsStudio";
+import { BadgesStudio } from "@/components/assets/BadgesStudio";
+import { CustomImageStudio } from "@/components/assets/CustomImageStudio";
 
-type AssetTab = "capsule" | "gifs" | "tech" | "widgets";
+type AssetTab = "capsule" | "gifs" | "tech" | "widgets" | "badges" | "custom-image";
 
 export default function AssetsPage() {
   const [activeTab, setActiveTab] = useState<AssetTab>("capsule");
@@ -89,6 +93,30 @@ export default function AssetsPage() {
               <BarChart2 className="w-4 h-4 text-amber-400" />
               <span>GitHub Widgets</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab("badges")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition-all ${
+                activeTab === "badges"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Award className="w-4 h-4 text-emerald-400" />
+              <span>Badges</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("custom-image")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition-all ${
+                activeTab === "custom-image"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <ImageIcon className="w-4 h-4 text-sky-400" />
+              <span>Custom Images</span>
+            </button>
           </div>
         </div>
 
@@ -97,6 +125,8 @@ export default function AssetsPage() {
         {activeTab === "gifs" && <GifLibrary />}
         {activeTab === "tech" && <TechIconsStudio />}
         {activeTab === "widgets" && <WidgetsStudio />}
+        {activeTab === "badges" && <BadgesStudio />}
+        {activeTab === "custom-image" && <CustomImageStudio />}
       </main>
     </div>
   );

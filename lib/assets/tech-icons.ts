@@ -107,10 +107,16 @@ export const TECH_CATALOG: TechItem[] = [
   { id: "playwright", name: "Playwright", category: "tools", color: "2EAD33", logo: "playwright", skillIconSlug: "playwright" },
 ];
 
-export function buildTechIconHtml(item: TechItem, style: "badges" | "devicon" | "skillicons" = "badges"): string {
+export type TechIconStyle = "badges" | "devicon" | "simpleicons" | "skillicons";
+
+export function buildTechIconHtml(item: TechItem, style: TechIconStyle = "badges"): string {
   if (style === "devicon" && item.deviconSlug) {
     const src = `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${item.deviconSlug}.svg`;
     return `<img src="${src}" alt="${item.name}" width="40" height="40" />`;
+  }
+  if (style === "simpleicons") {
+    const src = `https://cdn.simpleicons.org/${item.logo}/${item.color}`;
+    return `<img src="${src}" alt="${item.name}" width="36" height="36" />`;
   }
   if (style === "skillicons" && item.skillIconSlug) {
     const src = `https://skillicons.dev/icons?i=${item.skillIconSlug}`;
@@ -123,7 +129,7 @@ export function buildTechIconHtml(item: TechItem, style: "badges" | "devicon" | 
 
 export function buildCategorizedTechStackMarkdown(
   selectedIds: string[],
-  style: "badges" | "devicon" | "skillicons" = "badges"
+  style: TechIconStyle = "badges"
 ): string {
   const selectedSet = new Set(selectedIds);
   const blocks: string[] = [];

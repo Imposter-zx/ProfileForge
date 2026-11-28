@@ -7,10 +7,12 @@ import {
   Sparkles,
   Sliders,
   Image as ImageIcon,
+  FileCode2,
   X,
   Shuffle,
   Clock,
   ArrowUpDown,
+  Check,
 } from "lucide-react";
 import {
   ASCII_CATALOG,
@@ -25,9 +27,10 @@ import { AsciiViewer } from "./AsciiViewer";
 import { CategoryFilter } from "./CategoryFilter";
 import { BannerCustomizer } from "./BannerCustomizer";
 import { ImageToAsciiStudio } from "./ImageToAsciiStudio";
+import { CustomAsciiEditor } from "./CustomAsciiEditor";
 import { Button } from "@/components/ui/Button";
 
-type GalleryViewMode = "gallery" | "banner" | "image-to-ascii";
+type GalleryViewMode = "gallery" | "banner" | "image-to-ascii" | "custom-editor";
 type SortOption = "default" | "name" | "canvas" | "fps";
 
 export function AsciiGallery() {
@@ -49,6 +52,10 @@ export function AsciiGallery() {
     null
   );
   const [sortBy, setSortBy] = useState<SortOption>("default");
+  const [customAsciiDraft, setCustomAsciiDraft] = useState<string | undefined>(
+    undefined
+  );
+  const [addedToast, setAddedToast] = useState<string | null>(null);
 
   // Filter pieces based on search query, category, and thematic tag
   const filteredPieces = useMemo(() => {
@@ -116,6 +123,8 @@ export function AsciiGallery() {
         width: Math.min(500, piece.cols * 10),
       },
     });
+    setAddedToast(`${piece.name} added to README Studio`);
+    setTimeout(() => setAddedToast(null), 2500);
   };
 
   // Resolve recently viewed items
@@ -140,22 +149,22 @@ export function AsciiGallery() {
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs shrink-0">
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs shrink-0 overflow-x-auto max-w-full">
           <button
             onClick={() => setActiveTab("gallery")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
               activeTab === "gallery"
                 ? "bg-indigo-600 text-white shadow-md"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>217-Piece Gallery</span>
+            <span>{ASCII_CATALOG.length}-Piece Gallery</span>
           </button>
 
           <button
             onClick={() => setActiveTab("banner")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
               activeTab === "banner"
                 ? "bg-indigo-600 text-white shadow-md"
                 : "text-slate-400 hover:text-slate-200"
@@ -167,7 +176,7 @@ export function AsciiGallery() {
 
           <button
             onClick={() => setActiveTab("image-to-ascii")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
               activeTab === "image-to-ascii"
                 ? "bg-indigo-600 text-white shadow-md"
                 : "text-slate-400 hover:text-slate-200"
@@ -176,8 +185,27 @@ export function AsciiGallery() {
             <ImageIcon className="w-3.5 h-3.5" />
             <span>Image-to-ASCII</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("custom-editor")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+              activeTab === "custom-editor"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <FileCode2 className="w-3.5 h-3.5" />
+            <span>Custom ASCII Editor</span>
+          </button>
         </div>
       </div>
+
+      {addedToast && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
+          <Check className="w-4 h-4 shrink-0" />
+          <span>{addedToast}</span>
+        </div>
+      )}
 
       {/* TAB 1: ALL PIECES GALLERY */}
       {activeTab === "gallery" && (
@@ -319,7 +347,19 @@ export function AsciiGallery() {
       {activeTab === "banner" && <BannerCustomizer />}
 
       {/* TAB 3: IMAGE-TO-ASCII STUDIO */}
-      {activeTab === "image-to-ascii" && <ImageToAsciiStudio />}
+      {activeTab === "image-to-ascii" && (
+        <ImageToAsciiStudio
+          onOpenInEditor={(plainText) => {
+            setCustomAsciiDraft(plainText);
+            setActiveTab("custom-editor");
+          }}
+        />
+      )}
+
+      {/* TAB 4: CUSTOM ASCII EDITOR */}
+      {activeTab === "custom-editor" && (
+        <CustomAsciiEditor initialText={customAsciiDraft} />
+      )}
 
       {/* ASCII Piece Inspector Modal */}
       <AsciiViewer

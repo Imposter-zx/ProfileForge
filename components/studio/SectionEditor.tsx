@@ -31,6 +31,7 @@ import {
   TECH_CATALOG,
 } from "@/lib/assets/tech-icons";
 import { CURATED_GIFS, RETRO_SPACE_SHOOTER_GIF } from "@/lib/assets/gifs";
+import { ExtendedSectionEditor } from "./ExtendedSectionEditors";
 
 const BANNER_FONTS = [
   "block",
@@ -271,6 +272,40 @@ export function SectionEditor() {
             />
           </div>
         )}
+
+        {/* EXTENDED SECTION EDITORS (Profile, Content, Projects, Tables, Visuals) */}
+        <ExtendedSectionEditor section={section} />
+
+        {/* OPTIONAL RAW MARKDOWN OVERRIDE */}
+        <div className="pt-4 border-t border-slate-800/80 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-slate-400">
+              Raw Markdown Override (optional)
+            </label>
+            {section.rawMarkdownOverride !== undefined && (
+              <button
+                type="button"
+                onClick={() =>
+                  updateSection(section.id, { rawMarkdownOverride: undefined })
+                }
+                className="text-[11px] text-indigo-400 hover:text-indigo-300"
+              >
+                Reset to Visual Editor
+              </button>
+            )}
+          </div>
+          <textarea
+            rows={3}
+            value={section.rawMarkdownOverride ?? ""}
+            onChange={(e) =>
+              updateSection(section.id, {
+                rawMarkdownOverride: e.target.value || undefined,
+              })
+            }
+            placeholder="Leave empty to auto-generate Markdown from visual fields above..."
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500 resize-y"
+          />
+        </div>
       </div>
     </div>
   );

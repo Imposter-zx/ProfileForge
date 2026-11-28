@@ -7,6 +7,8 @@ import {
   Copy,
   Check,
   Plus,
+  Heart,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,10 +21,16 @@ import {
   type CapsuleType,
   type CapsuleAnimation,
 } from "@/lib/assets/capsule";
+import { validateAssetUrl, escapeHtmlAttr } from "@/lib/assets/validation";
+import { useAssetFavorites } from "@/lib/assets/favorites";
 
 export function CapsuleStudio() {
   const { addSection, username } = useStore();
+  const { isFavorite, toggleFavorite } = useAssetFavorites();
 
+  const [bannerMode, setBannerMode] = useState<"capsule" | "custom">("capsule");
+
+  // Capsule Render state
   const [type, setType] = useState<CapsuleType>("waving");
   const [section, setSection] = useState<"header" | "footer">("header");
   const [color, setColor] = useState("0:00F2FE,100:4FACFE");
@@ -34,6 +42,12 @@ export function CapsuleStudio() {
   const [descSize, setDescSize] = useState(18);
   const [animation, setAnimation] = useState<CapsuleAnimation>("fadeIn");
 
+  // Custom Banner state
+  const [customBannerUrl, setCustomBannerUrl] = useState("");
+  const [customBannerAlt, setCustomBannerAlt] = useState("Profile Header Banner");
+  const [customBannerWidth, setCustomBannerWidth] = useState("100%");
+
+  const [previewError, setPreviewError] = useState(false);
   const [copied, setCopied] = useState(false);
   const [added, setAdded] = useState(false);
 
@@ -50,10 +64,32 @@ export function CapsuleStudio() {
     animation,
   };
 
-  const url = buildCapsuleRenderUrl(config);
-  const markdownSnippet = `<div align="center">\n  <img src="${url}" width="100%" alt="${text || "Header"}" />\n</div>`;
+  const capsuleUrl = buildCapsuleRenderUrl(config);
+  const customUrlCheck = validateAssetUrl(customBannerUrl, { allowEmpty: true });
+  const hasValidCustom =
+    Boolean(customBannerUrl.trim()) &&
+    customUrlCheck.valid &&
+    Boolean(customUrlCheck.normalizedUrl);
+
+  const activeUrl =
+    bannerMode === "capsule"
+      ? capsuleUrl
+      : hasValidCustom
+      ? customUrlCheck.normalizedUrl!
+      : "";
+
+  const markdownSnippet =
+    bannerMode === "capsule"
+      ? `<div align="center">\n  <img src="${capsuleUrl}" width="100%" alt="${escapeHtmlAttr(text || "Header")}" />\n</div>`
+      : activeUrl
+      ? `<div align="center">\n  <img src="${escapeHtmlAttr(activeUrl)}" width="${escapeHtmlAttr(customBannerWidth || "100%")}" alt="${escapeHtmlAttr(customBannerAlt || "Banner")}" />\n</div>`
+      : "";
+
+  const favId = `banner-${bannerMode}-${activeUrl}`;
+  const favorited = Boolean(activeUrl) && isFavorite(favId);
 
   const handleCopy = async () => {
+    if (!markdownSnippet) return;
     try {
       await navigator.clipboard.writeText(markdownSnippet);
       setCopied(true);
@@ -62,16 +98,31 @@ export function CapsuleStudio() {
   };
 
   const handleAddToReadme = () => {
-    addSection({
-      id: `sec-capsule-${Math.random().toString(36).slice(2, 8)}`,
-      type: "capsule-render",
-      title: section === "header" ? "Capsule Header" : "Capsule Footer",
-      enabled: true,
-      align: "center",
-      data: {
-        capsule: config,
-      },
-    });
+    if (!activeUrl) return;
+    if (bannerMode === "capsule") {
+      addSection({
+        id: `sec-capsule-${Math.random().toString(36).slice(2, 8)}`,
+        type: "capsule-render",
+        title: section === "header" ? "Capsule Header" : "Capsule Footer",
+        enabled: true,
+        align: "center",
+        data: {
+          capsule: config,
+        },
+      });
+    } else {
+      if (!hasValidCustom || previewError) return;
+      addSection({
+        id: `sec-custom-banner-${Math.random().toString(36).slice(2, 8)}`,
+        type: "custom",
+        title: customBannerAlt.trim() || "Custom Banner",
+        enabled: true,
+        align: "center",
+        data: {
+          markdown: markdownSnippet,
+        },
+      });
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 2500);
   };
@@ -79,186 +130,293 @@ export function CapsuleStudio() {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
             <h3 className="font-bold text-base text-white">
-              Capsule Render Studio
+              Banners &amp; Capsule Render Studio
             </h3>
             <p className="text-xs text-slate-400">
-              Generate dynamic SVG wave, egg, or cylinder headers and footers powered by capsule-render
+              Generate dynamic SVG Capsule Render banners or insert a custom hosted banner image
             </p>
           </div>
         </div>
 
-        {/* Section Switcher: Header vs Footer */}
-        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-          <button
-            onClick={() => {
-              setSection("header");
-              setHeight(200);
-            }}
-            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-              section === "header"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Header Banner
-          </button>
-          <button
-            onClick={() => {
-              setSection("footer");
-              setHeight(100);
-            }}
-            className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-              section === "footer"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Footer Banner
-          </button>
+        {/* Mode & Section Switcher */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+            <button
+              onClick={() => {
+                setBannerMode("capsule");
+                setPreviewError(false);
+              }}
+              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                bannerMode === "capsule"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Capsule Render
+            </button>
+            <button
+              onClick={() => {
+                setBannerMode("custom");
+                setPreviewError(false);
+              }}
+              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                bannerMode === "custom"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Custom Banner
+            </button>
+          </div>
+
+          {bannerMode === "capsule" && (
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+              <button
+                onClick={() => {
+                  setSection("header");
+                  setHeight(200);
+                }}
+                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                  section === "header"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Header
+              </button>
+              <button
+                onClick={() => {
+                  setSection("footer");
+                  setHeight(100);
+                }}
+                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                  section === "footer"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Footer
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Live Preview Screen */}
-      <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 flex items-center justify-center overflow-hidden min-h-[160px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url}
-          alt="Capsule Render Preview"
-          className="w-full max-w-2xl rounded-lg object-contain shadow-lg"
-        />
+      <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 flex items-center justify-center overflow-hidden min-h-[160px] relative">
+        {activeUrl ? (
+          previewError ? (
+            <div className="flex items-center gap-2 text-xs text-amber-400">
+              <AlertCircle className="w-4 h-4" />
+              <span>Failed to load banner preview. Verify the URL or parameters.</span>
+            </div>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={activeUrl}
+              alt={bannerMode === "capsule" ? "Capsule Render Preview" : customBannerAlt}
+              loading="lazy"
+              onLoad={() => setPreviewError(false)}
+              onError={() => setPreviewError(true)}
+              className="w-full max-w-2xl rounded-lg object-contain shadow-lg"
+            />
+          )
+        ) : (
+          <p className="text-xs text-slate-500">
+            Enter a valid https:// banner image URL below to preview.
+          </p>
+        )}
+
+        {activeUrl && !previewError && (
+          <button
+            onClick={() =>
+              toggleFavorite({
+                id: favId,
+                kind: "banner",
+                title:
+                  bannerMode === "capsule"
+                    ? text || `Capsule ${type}`
+                    : customBannerAlt || "Custom Banner",
+                previewUrl: activeUrl,
+                markdown: markdownSnippet,
+              })
+            }
+            className={`absolute top-3 right-3 p-1.5 rounded-lg border transition-colors ${
+              favorited
+                ? "text-rose-400 bg-rose-500/10 border-rose-500/30"
+                : "text-slate-400 bg-slate-900 border-slate-800 hover:text-slate-200"
+            }`}
+            title={favorited ? "Remove from favorites" : "Save to favorites"}
+          >
+            <Heart className={`w-3.5 h-3.5 ${favorited ? "fill-rose-500" : ""}`} />
+          </button>
+        )}
       </div>
 
-      {/* Controls Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Shape / Type */}
-        <div>
-          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
-            Shape Style
-          </label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as CapsuleType)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-          >
-            {CAPSULE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Animation */}
-        <div>
-          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
-            Animation Effect
-          </label>
-          <select
-            value={animation}
-            onChange={(e) => setAnimation(e.target.value as CapsuleAnimation)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-          >
-            <option value="fadeIn">fadeIn</option>
-            <option value="scaleIn">scaleIn</option>
-            <option value="twinkling">twinkling</option>
-            <option value="blinking">blinking</option>
-          </select>
-        </div>
-
-        {/* Height Slider */}
-        <div>
-          <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
-            <span>Height</span>
-            <span className="font-mono text-indigo-400">{height}px</span>
-          </div>
-          <input
-            type="range"
-            min={70}
-            max={300}
-            step={10}
-            value={height}
-            onChange={(e) => setHeight(parseInt(e.target.value, 10))}
-            className="w-full accent-indigo-500 mt-2"
-          />
-        </div>
-
-        {/* Color Presets */}
-        <div>
-          <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
-            Color Gradient
-          </label>
-          <select
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-          >
-            {CAPSULE_COLOR_PRESETS.map((p) => (
-              <option key={p.color} value={p.color}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Header-Specific Content Controls */}
-      {section === "header" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-slate-800/60">
-          <Input
-            label="Heading Text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Hi, I'm Alex"
-          />
-          <Input
-            label="Sub-headline / Tagline"
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="Full-Stack Developer"
-          />
-          <div>
-            <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
-              <span>Font Size</span>
-              <span className="font-mono text-indigo-400">{fontSize}px</span>
+      {bannerMode === "capsule" ? (
+        <>
+          {/* Controls Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Shape / Type */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+                Shape Style
+              </label>
+              <select
+                value={type}
+                onChange={(e) => {
+                  setType(e.target.value as CapsuleType);
+                  setPreviewError(false);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+              >
+                {CAPSULE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </div>
-            <input
-              type="range"
-              min={24}
-              max={70}
-              step={2}
-              value={fontSize}
-              onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
-              className="w-full accent-indigo-500 mt-2"
-            />
-          </div>
-          <Input
-            label="Font Color Hex"
-            value={fontColor}
-            onChange={(e) => setFontColor(e.target.value.replace("#", ""))}
-            placeholder="ffffff"
-          />
-          <div>
-            <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
-              <span>Subtitle Size</span>
-              <span className="font-mono text-indigo-400">{descSize}px</span>
+
+            {/* Animation */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+                Animation Effect
+              </label>
+              <select
+                value={animation}
+                onChange={(e) => setAnimation(e.target.value as CapsuleAnimation)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+              >
+                <option value="fadeIn">fadeIn</option>
+                <option value="scaleIn">scaleIn</option>
+                <option value="twinkling">twinkling</option>
+                <option value="blinking">blinking</option>
+              </select>
             </div>
-            <input
-              type="range"
-              min={12}
-              max={32}
-              step={1}
-              value={descSize}
-              onChange={(e) => setDescSize(parseInt(e.target.value, 10))}
-              className="w-full accent-indigo-500 mt-2"
-            />
+
+            {/* Height Slider */}
+            <div>
+              <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
+                <span>Height</span>
+                <span className="font-mono text-indigo-400">{height}px</span>
+              </div>
+              <input
+                type="range"
+                min={70}
+                max={300}
+                step={10}
+                value={height}
+                onChange={(e) => setHeight(parseInt(e.target.value, 10))}
+                className="w-full accent-indigo-500 mt-2"
+              />
+            </div>
+
+            {/* Color Presets */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
+                Color Gradient
+              </label>
+              <select
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+              >
+                {CAPSULE_COLOR_PRESETS.map((p) => (
+                  <option key={p.color} value={p.color}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          {/* Header-Specific Content Controls */}
+          {section === "header" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-slate-800/60">
+              <Input
+                label="Heading Text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Hi, I'm Alex"
+              />
+              <Input
+                label="Sub-headline / Tagline"
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="Full-Stack Developer"
+              />
+              <div>
+                <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
+                  <span>Font Size</span>
+                  <span className="font-mono text-indigo-400">{fontSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={24}
+                  max={70}
+                  step={2}
+                  value={fontSize}
+                  onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+                  className="w-full accent-indigo-500 mt-2"
+                />
+              </div>
+              <Input
+                label="Font Color Hex"
+                value={fontColor}
+                onChange={(e) => setFontColor(e.target.value.replace("#", ""))}
+                placeholder="ffffff"
+              />
+              <div>
+                <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
+                  <span>Subtitle Size</span>
+                  <span className="font-mono text-indigo-400">{descSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={12}
+                  max={32}
+                  step={1}
+                  value={descSize}
+                  onChange={(e) => setDescSize(parseInt(e.target.value, 10))}
+                  className="w-full accent-indigo-500 mt-2"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Input
+            label="Custom Banner Image URL"
+            value={customBannerUrl}
+            onChange={(e) => {
+              setCustomBannerUrl(e.target.value);
+              setPreviewError(false);
+            }}
+            error={!customUrlCheck.valid ? customUrlCheck.error : undefined}
+            hint={customUrlCheck.warning}
+            placeholder="https://raw.githubusercontent.com/..."
+          />
+          <Input
+            label="Banner Alt Text"
+            value={customBannerAlt}
+            onChange={(e) => setCustomBannerAlt(e.target.value)}
+            placeholder="Profile Header Banner"
+          />
+          <Input
+            label="Width (e.g. 100% or 800)"
+            value={customBannerWidth}
+            onChange={(e) => setCustomBannerWidth(e.target.value)}
+            placeholder="100%"
+          />
         </div>
       )}
 
@@ -266,6 +424,7 @@ export function CapsuleStudio() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800">
         <Button
           onClick={handleCopy}
+          disabled={!markdownSnippet}
           variant="outline"
           size="sm"
           leftIcon={
@@ -281,6 +440,7 @@ export function CapsuleStudio() {
 
         <Button
           onClick={handleAddToReadme}
+          disabled={!activeUrl || previewError}
           variant="glow"
           size="sm"
           leftIcon={
@@ -291,7 +451,11 @@ export function CapsuleStudio() {
             )
           }
         >
-          {added ? "Added to Studio!" : `Add ${section === "header" ? "Header" : "Footer"} to Studio`}
+          {added
+            ? "Added to Studio!"
+            : bannerMode === "capsule"
+            ? `Add ${section === "header" ? "Header" : "Footer"} to Studio`
+            : "Insert Custom Banner to Studio"}
         </Button>
       </div>
     </div>
